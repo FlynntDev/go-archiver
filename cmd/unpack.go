@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -15,18 +14,17 @@ import (
 	"github.com/FlynntDev/go-archiver/lib/compression/vlc"
 )
 
-var packCmd = &cobra.Command{
-	Use:   "pack",
-	Short: "Pack file",
-	Run:   pack,
+var unpackCmd = &cobra.Command{
+	Use:   "unpack",
+	Short: "Unpack file",
+	Run:   unpack,
 }
 
-const packedExtension = "vlc"
+// TODO: take extension from the file
+const unpackedExtension = "txt"
 
-var ErrEmptyPath = errors.New("path to file is not specified")
-
-func pack(cmd *cobra.Command, args []string) {
-	var encoder compression.Encoder
+func unpack(cmd *cobra.Command, args []string) {
+	var decoder compression.Decoder
 
 	if len(args) == 0 || args[0] == "" {
 		handleErr(ErrEmptyPath)
@@ -36,7 +34,7 @@ func pack(cmd *cobra.Command, args []string) {
 
 	switch method {
 	case "vlc":
-		encoder = vlc.New(shannon_fano.NewGenerator())
+		decoder = vlc.New(shannon_fano.Generator{})
 	default:
 		cmd.PrintErr("unknown method")
 	}
@@ -54,26 +52,27 @@ func pack(cmd *cobra.Command, args []string) {
 		handleErr(err)
 	}
 
-	packed := encoder.Encode(string(data))
+	packed := decoder.Decode(data)
 
-	err = os.WriteFile(packedFileName(filePath), packed, 0644)
+	err = os.WriteFile(unpackedFileName(filePath), []byte(packed), 0644)
 	if err != nil {
 		handleErr(err)
 	}
 }
 
-func packedFileName(path string) string {
+// TODO: refactor this
+func unpackedFileName(path string) string {
 	fileName := filepath.Base(path)
 
-	return strings.TrimSuffix(fileName, filepath.Ext(fileName)) + "." + packedExtension
+	return strings.TrimSuffix(fileName, filepath.Ext(fileName)) + "." + unpackedExtension
 }
 
 func init() {
-	rootCmd.AddCommand(packCmd)
+	rootCmd.AddCommand(unpackCmd)
 
-	packCmd.Flags().StringP("method", "m", "", "compression method: vlc")
+	unpackCmd.Flags().StringP("method", "m", "", "decompression method: vlc")
 
-	if err := packCmd.MarkFlagRequired("method"); err != nil {
+	if err := unpackCmd.MarkFlagRequired("method"); err != nil {
 		panic(err)
 	}
 }
